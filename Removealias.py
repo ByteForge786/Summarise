@@ -34,8 +34,6 @@ print(result)
 
 
 
-
-
 import re
 
 def remove_column_aliases(columns, sql_query):
@@ -43,29 +41,31 @@ def remove_column_aliases(columns, sql_query):
     alias_pattern = r'\b(\w+)\s+as\s+(\w+)\b'
     aliases = dict(re.findall(alias_pattern, sql_query, re.IGNORECASE))
     
-    # Create a reverse mapping of alias to original column name
-    reverse_aliases = {alias.lower(): original for original, alias in aliases.items()}
+    # Function to remove alias from a column name
+    def remove_alias(column):
+        # If the column matches an alias, return None to indicate removal
+        for original, alias in aliases.items():
+            if column.lower() == alias.lower():
+                return None
+        return column
     
-    # Remove aliases from the column list in-place
-    i = 0
-    while i < len(columns):
-        col = columns[i].lower()
-        if col in reverse_aliases:
-            columns[i] = reverse_aliases[col]
-            i += 1
-        else:
-            columns.pop(i)
+    # Apply the remove_alias function to each column, filtering out None values
+    return [col for col in (remove_alias(col) for col in columns) if col]
 
 # Example usage
 sql_query = """
 SELECT 
     customer_id,
-    first_name as fname,
-    last_name as lname,
-    email_address as email
+    first_name AS fname,
+    last_name AS lname,
+    email_address AS email
 FROM customers
 WHERE status = 'active'
 """
+
 columns = ['customer_id', 'fname', 'lname', 'email']
-remove_column_aliases(columns, sql_query)
-print(columns)
+
+result = remove_column_aliases(columns, sql_query)
+print(result)
+
+
