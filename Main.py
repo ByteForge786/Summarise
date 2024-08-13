@@ -1,17 +1,7 @@
- def main():
+def main():
     st.set_page_config(page_title="Data Query and Visualization App", layout="wide")
 
     st.title("Data Query and Visualization App")
-
-    # Initialize session state
-    if 'result_df' not in st.session_state:
-        st.session_state.result_df = None
-    if 'analysis_summary' not in st.session_state:
-        st.session_state.analysis_summary = None
-    if 'analysis_code' not in st.session_state:
-        st.session_state.analysis_code = None
-    if 'graph_code' not in st.session_state:
-        st.session_state.graph_code = None
 
     # Load cached model
     model, tokenizer = load_model()
@@ -25,12 +15,17 @@
     # User input
     question = st.text_input("Enter your question:")
 
+    if 'result_df' not in st.session_state:
+        st.session_state.result_df = None
+
     if st.button("Submit"):
         if question:
             with st.spinner("Generating SQL query..."):
                 response = get_model_response(question, prompt, model, tokenizer)
-                sql_query = get_sql_query_from_response(response)
-                chart_recommendation = get_chart_recommendation_from_response(response)
+                sql_query = re.search(r'```sql\n(.*?)\n```', response, re.DOTALL)
+                sql_query = sql_query.group(1) if sql_query else None
+                chart_recommendation = re.search(r'Chart recommendation: (.*?)$', response, re.MULTILINE)
+                chart_recommendation = chart_recommendation.group(1) if chart_recommendation else None
 
             if sql_query:
                 st.subheader("Generated SQL Query:")
@@ -38,7 +33,7 @@
 
                 with st.spinner("Executing query..."):
                     # This is where you would run your SQL query on Snowflake
-                    # and get the result_df. For now, we'll use a dummy DataFrame.
+                    # For now, we'll use a dummy DataFrame.
                     st.session_state.result_df = pd.DataFrame({
                         'Column1': ['A', 'B', 'C'],
                         'Column2': [10, 20, 30]
@@ -53,38 +48,33 @@
 
         with col2:
             st.subheader("Visualization:")
-            generate_chart(st.session_state.result_df, chart_recommendation)
+            fig = px.bar(st.session_state.result_df, x='Column1', y='Column2')
+            st.plotly_chart(fig)
 
         # Add analysis and graph generation options
         st.subheader("Additional Analysis")
         col3, col4 = st.columns(2)
 
         with col3:
-            if st.button("Analyze Data"):
+            if st.button("Analyze Data", key="analyze"):
                 with st.spinner("Analyzing data..."):
-                    st.session_state.analysis_summary, st.session_state.analysis_code = analyze_dataframe(st.session_state.result_df, question)
+                    summary, analysis_code = analyze_dataframe(st.session_state.result_df, question)
+                    st.write("Analysis Summary:")
+                    st.write(summary)
+                    st.write("Analysis Code:")
+                    st.code(analysis_code)
 
         with col4:
-            if st.button("Generate Graphs"):
+            if st.button("Generate Graphs", key="generate_graphs"):
                 with st.spinner("Generating graphs..."):
-                    st.session_state.graph_code = generate_graphs(st.session_state.result_df, question)
-
-        # Display analysis results if available
-        if st.session_state.analysis_summary:
-            st.write("Analysis Summary:")
-            st.write(st.session_state.analysis_summary)
-            st.write("Analysis Code:")
-            st.code(st.session_state.analysis_code)
-
-        # Display graph if available
-        if st.session_state.graph_code:
-            st.write("Graph Code:")
-            st.code(st.session_state.graph_code)
-            
-            # Execute the graph code
-            fig, ax = plt.subplots(3, 1, figsize=(10, 15))
-            exec(st.session_state.graph_code, {'df': st.session_state.result_df, 'np': np, 'plt': plt, 'ax': ax})
-            st.pyplot(fig)
+                    graph_code = generate_graphs(st.session_state.result_df, question)
+                    st.write("Graph Code:")
+                    st.code(graph_code)
+                    
+                    # Execute the graph code
+                    fig, ax = plt.subplots()
+                    exec(graph_code, {'df': st.session_state.result_df, 'plt': plt, 'ax': ax})
+                    st.pyplot(fig)
 
 if __name__ == "__main__":
     main()
