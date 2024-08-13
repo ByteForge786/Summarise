@@ -1,7 +1,17 @@
-def main():
+ def main():
     st.set_page_config(page_title="Data Query and Visualization App", layout="wide")
 
     st.title("Data Query and Visualization App")
+
+    # Initialize session state
+    if 'result_df' not in st.session_state:
+        st.session_state.result_df = None
+    if 'analysis_summary' not in st.session_state:
+        st.session_state.analysis_summary = None
+    if 'analysis_code' not in st.session_state:
+        st.session_state.analysis_code = None
+    if 'graph_code' not in st.session_state:
+        st.session_state.graph_code = None
 
     # Load cached model
     model, tokenizer = load_model()
@@ -29,54 +39,52 @@ def main():
                 with st.spinner("Executing query..."):
                     # This is where you would run your SQL query on Snowflake
                     # and get the result_df. For now, we'll use a dummy DataFrame.
-                    result_df = pd.DataFrame({
+                    st.session_state.result_df = pd.DataFrame({
                         'Column1': ['A', 'B', 'C'],
                         'Column2': [10, 20, 30]
                     })
 
-                if not result_df.empty:
-                    col1, col2 = st.columns(2)
+    if st.session_state.result_df is not None:
+        col1, col2 = st.columns(2)
 
-                    with col1:
-                        st.subheader("Query Results:")
-                        st.dataframe(result_df)
+        with col1:
+            st.subheader("Query Results:")
+            st.dataframe(st.session_state.result_df)
 
-                    with col2:
-                        st.subheader("Visualization:")
-                        generate_chart(result_df, chart_recommendation)
+        with col2:
+            st.subheader("Visualization:")
+            generate_chart(st.session_state.result_df, chart_recommendation)
 
-                    # Add analysis and graph generation options
-                    st.subheader("Additional Analysis")
-                    col3, col4 = st.columns(2)
+        # Add analysis and graph generation options
+        st.subheader("Additional Analysis")
+        col3, col4 = st.columns(2)
 
-                    with col3:
-                        if st.button("Analyze Data"):
-                            with st.spinner("Analyzing data..."):
-                                summary, analysis_code = analyze_dataframe(result_df, question)
-                                st.write("Analysis Summary:")
-                                st.write(summary)
-                                
-                                st.write("Analysis Code:")
-                                st.code(analysis_code)
+        with col3:
+            if st.button("Analyze Data"):
+                with st.spinner("Analyzing data..."):
+                    st.session_state.analysis_summary, st.session_state.analysis_code = analyze_dataframe(st.session_state.result_df, question)
 
-                    with col4:
-                        if st.button("Generate Graphs"):
-                            with st.spinner("Generating graphs..."):
-                                graph_code = generate_graphs(result_df, question)
-                                st.write("Graph Code:")
-                                st.code(graph_code)
-                                
-                                # Execute the graph code
-                                fig, ax = plt.subplots(3, 1, figsize=(10, 15))
-                                exec(graph_code, {'df': result_df, 'np': np, 'plt': plt, 'ax': ax})
-                                st.pyplot(fig)
+        with col4:
+            if st.button("Generate Graphs"):
+                with st.spinner("Generating graphs..."):
+                    st.session_state.graph_code = generate_graphs(st.session_state.result_df, question)
 
-                else:
-                    st.warning("No results found for the given query.")
-            else:
-                st.error("Could not generate a valid SQL query.")
-        else:
-            st.warning("Please enter a question.")
+        # Display analysis results if available
+        if st.session_state.analysis_summary:
+            st.write("Analysis Summary:")
+            st.write(st.session_state.analysis_summary)
+            st.write("Analysis Code:")
+            st.code(st.session_state.analysis_code)
+
+        # Display graph if available
+        if st.session_state.graph_code:
+            st.write("Graph Code:")
+            st.code(st.session_state.graph_code)
+            
+            # Execute the graph code
+            fig, ax = plt.subplots(3, 1, figsize=(10, 15))
+            exec(st.session_state.graph_code, {'df': st.session_state.result_df, 'np': np, 'plt': plt, 'ax': ax})
+            st.pyplot(fig)
 
 if __name__ == "__main__":
     main()
