@@ -1,0 +1,49 @@
+import streamlit as st
+import ctranslate2
+import transformers
+from huggingface_hub import snapshot_download
+
+@st.cache_resource
+def load_model():
+    model_id = "ByteForge/Defog_llama-3-sqlcoder-8b-ct2-int8_float16"
+    model_path = snapshot_download(model_id)
+    model = ctranslate2.Generator(model_path)
+    tokenizer = transformers.AutoTokenizer.from_pretrained(model_id)
+    return model, tokenizer
+
+def generate_response(prompt, max_length=1000):
+    input_tokens = tokenizer.encode(prompt, return_tensors="pt")
+    results = model.generate(input_tokens, max_length=max_length)
+    return tokenizer.decode(results[0].sequences[0], skip_special_tokens=True)
+
+st.title("Resume Analysis and Question Generator")
+
+# Resume input
+resume_text = st.text_area("Paste the resume content here:")
+
+# User expectations input
+user_expectations = st.text_input("What are you expecting from this resume?")
+
+if st.button("Analyze Resume and Generate Questions"):
+    if resume_text and user_expectations:
+        # Analyze resume
+        resume_analysis_prompt = f"Analyze the following resume:\n\n{resume_text}\n\nUser expectations: {user_expectations}\n\nProvide a summary of the candidate's qualifications and how they align with the user's expectations."
+        resume_analysis = generate_response(resume_analysis_prompt)
+        st.subheader("Resume Analysis")
+        st.write(resume_analysis)
+
+        # Generate general ability questions
+        ability_questions_prompt = f"Based on the following resume and user expectations, generate 5 questions to assess the candidate's overall ability for the job:\n\nResume:\n{resume_text}\n\nUser expectations: {user_expectations}"
+        ability_questions = generate_response(ability_questions_prompt)
+        st.subheader("General Ability Questions")
+        st.write(ability_questions)
+
+        # Generate coding questions
+        coding_questions_prompt = f"Based on the following resume and user expectations, generate 3 coding questions to assess the candidate's technical skills:\n\nResume:\n{resume_text}\n\nUser expectations: {user_expectations}"
+        coding_questions = generate_response(coding_questions_prompt)
+        st.subheader("Coding Questions")
+        st.write(coding_questions)
+    else:
+        st.warning("Please provide both the resume content and user expectations.")
+
+model, tokenizer = load_model()
