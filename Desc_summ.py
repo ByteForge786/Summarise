@@ -1,3 +1,13 @@
+Based on the content from the {column_name} column, analyze and answer these questions:
+    1. What are the main themes or topics mentioned in the descriptions?
+    2. Are there any common patterns in how the content is structured?
+    3. What key insights can be drawn from these descriptions?
+    4. Are there any unusual or notable entries that stand out?
+    
+    Context:
+    {context}
+
+
 import streamlit as st
 import ctranslate2
 import transformers
